@@ -38,18 +38,19 @@ export default class Newledge extends Plugin {
 		this.settings.enable = true;
 		await this.saveSettings();
 
-		const { valid } = await this.checkAccount();
-		if (valid) {
-			await this._initDir();
+		this.checkAccount().then(async ({ valid }) => {
+			if (valid) {
+				await this._initDir();
 
-			await this.sync();
+				this.sync();
 
-			this.registerInterval(
-				window.setInterval(async () => {
-					await this._timingSync();
-				}, minute)
-			);
-		}
+				this.registerInterval(
+					window.setInterval(async () => {
+						await this._timingSync();
+					}, minute)
+				);
+			}
+		});
 	}
 
 	async onunload() {

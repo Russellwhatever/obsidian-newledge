@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-newledge",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "新枝Newledge 的 Obsidian 插件",
 	"main": "main.js",
 	"scripts": {

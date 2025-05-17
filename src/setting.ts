@@ -179,7 +179,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 							return;
 						}
 
-						await this.plugin.sync();
+						this.plugin.sync();
 					});
 			});
 
