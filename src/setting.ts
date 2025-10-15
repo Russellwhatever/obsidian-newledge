@@ -77,7 +77,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 
 		const qrCodeSetting = new Setting(containerEl)
 			.setName("扫描二维码绑定新枝账户")
-			.setDesc("后花园 > 数据联动 > 同步到 Obsidian");
+			.setDesc("个人页 > 数据联动 > 同步到 Obsidian 桌面端");
 
 		this.renderQrCodeSetting(sessionId, qrCodeSetting);
 	}
