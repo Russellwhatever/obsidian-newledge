@@ -217,15 +217,21 @@ export default class Newledge extends Plugin {
 		const adapter = this.app.vault.adapter;
 		const { rootDir, linkDir, richTextDir } = this.settings;
 
-		const dirsToCreate = [
-			rootDir,
-			`${rootDir}/${linkDir}`,
-			`${rootDir}/${richTextDir}`,
-		];
+		// 规范化根路径及子路径
+		const normalizedRoot = normalizePath(rootDir);
+		const linkDirPath = normalizePath(`${normalizedRoot}/${linkDir}`);
+		const richTextDirPath = normalizePath(`${normalizedRoot}/${richTextDir}`);
+
+		const dirsToCreate = [normalizedRoot, linkDirPath, richTextDirPath];
 
 		for (const dir of dirsToCreate) {
-			if (!(await adapter.exists(dir))) {
-				await adapter.mkdir(dir);
+			try {
+				// 使用 Vault API 创建文件夹，可保证创建嵌套目录
+				await this.app.vault.createFolder(dir);
+			} catch (error) {
+				// createFolder 在目录已存在时会抛错，忽略此类错误
+				// 其他错误仍然向上抛出
+				// 这里尽可能静默处理，避免阻塞同步流程
 			}
 		}
 	}
@@ -275,33 +281,37 @@ export default class Newledge extends Plugin {
 
 			const normalizedTitle = this._normalizeTitle(noteTitle);
 
+			// 规范化根和子目录，后续构造路径统一使用这些变量
+			const normalizedRoot = normalizePath(rootDir);
+			const normalizedLinkDir = normalizePath(linkDir);
+			const normalizedRichTextDir = normalizePath(richTextDir);
+
 			let fileName = "";
 			if (superType === "SUPER_LINK") {
-				const dir = `${rootDir}/${linkDir}/${normalizedTitle}`;
-				if (!(await adapter.exists(dir))) {
-					await adapter.mkdir(dir);
+				const dir = normalizePath(`${normalizedRoot}/${normalizedLinkDir}/${normalizedTitle}`);
+				try {
+					await this.app.vault.createFolder(normalizePath(`${normalizedRoot}/${normalizedLinkDir}`));
+				} catch (error) {
+					// ignore
 				}
-				fileName = await this._getFileName(`${dir}/${normalizedTitle}`);
+				fileName = await this._getFileName(`${normalizedRoot}/${normalizedLinkDir}/${normalizedTitle}`);
 			} else if (superType === "SUPER_RICH_TEXT") {
 				if (
 					(noteType === "HIGHLIGHT" || noteType === "ANNOTATION") &&
 					relatedContentTitle &&
 					relatedContentSuperType === "SUPER_LINK"
 				) {
-					const normalizedRelatedContentTitle =
-						this._normalizeTitle(relatedContentTitle);
-					const relatedContentDir = `${rootDir}/${linkDir}/${normalizedRelatedContentTitle}`;
-					if (!(await adapter.exists(relatedContentDir))) {
-						await adapter.mkdir(relatedContentDir);
+					const normalizedRelatedContentTitle = this._normalizeTitle(relatedContentTitle);
+					const relatedContentDir = normalizePath(`${normalizedRoot}/${normalizedLinkDir}/${normalizedRelatedContentTitle}`);
+					try {
+						await this.app.vault.createFolder(normalizePath(`${normalizedRoot}/${normalizedLinkDir}/${normalizedRelatedContentTitle}`));
+					} catch (error) {
+						// ignore
 					}
 
-					fileName = await this._getFileName(
-						`${relatedContentDir}/${normalizedTitle}`
-					);
+					fileName = await this._getFileName(`${relatedContentDir}/${normalizedTitle}`);
 				} else {
-					fileName = await this._getFileName(
-						`${rootDir}/${richTextDir}/${normalizedTitle}`
-					);
+					fileName = await this._getFileName(`${normalizedRoot}/${normalizedRichTextDir}/${normalizedTitle}`);
 				}
 			}
 

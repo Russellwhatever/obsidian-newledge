@@ -166,6 +166,65 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 					})
 			);
 
+		// 新增：自定义同步目录设置
+		new Setting(containerEl)
+			.setName("同步根目录")
+			.setDesc("相对于 Vault 根路径，例如: 新枝 或 新枝/子目录")
+			.addText((text) =>
+				text
+					.setPlaceholder(DEFAULT_SETTINGS.rootDir)
+					.setValue(this.plugin.settings.rootDir)
+					.onChange(async (val) => {
+						// 统一使用正斜杠，去除首尾斜杠并 trim
+						const cleaned = val.trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+						if (!cleaned) {
+							new Notice("新枝: 目录不能为空，已恢复为默认值");
+							this.plugin.settings.rootDir = DEFAULT_SETTINGS.rootDir;
+						} else {
+							this.plugin.settings.rootDir = cleaned;
+						}
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("富文本笔记目录")
+			.setDesc("将富文本笔记写入到 根目录/此目录，例如: 笔记")
+			.addText((text) =>
+				text
+					.setPlaceholder(DEFAULT_SETTINGS.richTextDir)
+					.setValue(this.plugin.settings.richTextDir)
+					.onChange(async (val) => {
+						const cleaned = val.trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+						if (!cleaned) {
+							new Notice("新枝: 目录不能为空，已恢复为默认值");
+							this.plugin.settings.richTextDir = DEFAULT_SETTINGS.richTextDir;
+						} else {
+							this.plugin.settings.richTextDir = cleaned;
+						}
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("文章/链接目录")
+			.setDesc("将文章或链接写入到 根目录/此目录，例如: 文章")
+			.addText((text) =>
+				text
+					.setPlaceholder(DEFAULT_SETTINGS.linkDir)
+					.setValue(this.plugin.settings.linkDir)
+					.onChange(async (val) => {
+						const cleaned = val.trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+						if (!cleaned) {
+							new Notice("新枝: 目录不能为空，已恢复为默认值");
+							this.plugin.settings.linkDir = DEFAULT_SETTINGS.linkDir;
+						} else {
+							this.plugin.settings.linkDir = cleaned;
+						}
+						await this.plugin.saveSettings();
+					})
+			);
+
 		new Setting(containerEl)
 			.setName("立即同步")
 			.setDesc("立即从新枝同步数据到 Obsidian 中")
