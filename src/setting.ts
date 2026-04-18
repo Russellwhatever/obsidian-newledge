@@ -58,9 +58,9 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 			await this.plugin.checkAccount();
 
 		if (accountValid) {
-			this.renderSetting(failedTaskCount);
+			await this.renderSetting(failedTaskCount);
 		} else {
-			this.renderLogin();
+			await this.renderLogin();
 		}
 	}
 
@@ -96,7 +96,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 				qrCodeValueDom.remove();
 				this.renderQrCodeSetting(
 					await this._getSessionId(),
-					qrCodeSetting
+					qrCodeSetting,
 				);
 			};
 
@@ -125,6 +125,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 
 		const userInfo = this.plugin.settings.user!;
 		const token = this.plugin.settings.token!;
+		const currentRootDir = await this.plugin.ensureRootDirExists();
 
 		const accountSetting = new Setting(containerEl)
 			.setName("账号: " + userInfo.name)
@@ -152,6 +153,31 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 		});
 
 		new Setting(containerEl)
+			.setName("同步目录")
+			.setDesc("设置同步内容的根目录（默认：新枝）")
+			.addText((text) => {
+				text.setPlaceholder("例如：新枝").setValue(currentRootDir);
+				this.plugin.registerDomEvent(text.inputEl, "blur", async () => {
+					const raw = text.getValue().trim();
+					const normalized = this.plugin.getNormalizedRootDir();
+					this.plugin.settings.rootDir = raw;
+					const safeRootDir = this.plugin.getNormalizedRootDir();
+
+					if (safeRootDir !== raw) {
+						new Notice(
+							`新枝: 不支持的路径格式，已恢复为 ${safeRootDir}`,
+						);
+					} else if (safeRootDir !== normalized) {
+						new Notice(`新枝: 同步目录已更新为 ${safeRootDir}`);
+					}
+
+					text.setValue(safeRootDir);
+					await this.plugin.ensureRootDirExists();
+				});
+				return text;
+			});
+
+		new Setting(containerEl)
 			.setName("定时同步")
 			.setDesc("每隔一段时间从新枝同步数据到 Obsidian 中")
 			.addDropdown((dropdown) =>
@@ -163,7 +189,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 					.onChange(async (val) => {
 						this.plugin.settings.syncInterval = parseInt(val, 10);
 						await this.plugin.saveSettings();
-					})
+					}),
 			);
 
 		new Setting(containerEl)
@@ -204,14 +230,14 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 
 							if (this.plugin.settings.syncing) {
 								new Notice(
-									"新枝: 正在同步中, 将在本次同步完成后重试失败内容"
+									"新枝: 正在同步中, 将在本次同步完成后重试失败内容",
 								);
 							} else {
 								await this.plugin.sync();
 								containerEl.removeChild(
 									containerEl.children[
 										containerEl.children.length - 1
-									]
+									],
 								);
 							}
 						});
@@ -233,7 +259,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 	}
 
 	private async _getLoginStatus(
-		sessionId: string
+		sessionId: string,
 	): Promise<LoginStatus & { qrCodeExpired?: boolean }> {
 		return new Promise((resolve) => {
 			let attempts = 1;
@@ -280,7 +306,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 					}
 
 					attempts++;
-				}, 2000)
+				}, 2000),
 			);
 		});
 	}

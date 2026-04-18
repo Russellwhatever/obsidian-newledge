@@ -22,6 +22,28 @@ const minute = 60000;
 export default class Newledge extends Plugin {
 	settings: NewledgeSettings;
 
+	getNormalizedRootDir(): string {
+		return this._normalizeRootDir(this.settings.rootDir);
+	}
+
+	async ensureRootDirExists(): Promise<string> {
+		const normalizedRootDir = this.getNormalizedRootDir();
+		await this._ensureDir(normalizedRootDir);
+
+		if (this.settings.rootDir !== normalizedRootDir) {
+			this.settings.rootDir = normalizedRootDir;
+			await this.saveSettings();
+		}
+
+		return normalizedRootDir;
+	}
+
+	async ensureDirExists(dir: string): Promise<string> {
+		const normalizedDir = this._normalizeRootDir(dir);
+		await this._ensureDir(normalizedDir);
+		return normalizedDir;
+	}
+
 	/**
 	 * obsidian 启动时调用
 	 * 插件启用时调用
@@ -214,19 +236,18 @@ export default class Newledge extends Plugin {
 	 * 初始化相关文件夹
 	 */
 	private async _initDir() {
-		const adapter = this.app.vault.adapter;
-		const { rootDir, linkDir, richTextDir } = this.settings;
+		const { linkDir, richTextDir } = this.settings;
+		const normalizedRootDir = await this.ensureRootDirExists();
+		const normalizedLinkDir = normalizePath(linkDir);
+		const normalizedRichTextDir = normalizePath(richTextDir);
 
 		const dirsToCreate = [
-			rootDir,
-			`${rootDir}/${linkDir}`,
-			`${rootDir}/${richTextDir}`,
+			`${normalizedRootDir}/${normalizedLinkDir}`,
+			`${normalizedRootDir}/${normalizedRichTextDir}`,
 		];
 
 		for (const dir of dirsToCreate) {
-			if (!(await adapter.exists(dir))) {
-				await adapter.mkdir(dir);
-			}
+			await this._ensureDir(dir);
 		}
 	}
 
@@ -240,6 +261,9 @@ export default class Newledge extends Plugin {
 	}> {
 		try {
 			const { rootDir, richTextDir, linkDir, enable } = this.settings;
+			const normalizedRootDir = this._normalizeRootDir(rootDir);
+			const normalizedLinkDir = normalizePath(linkDir);
+			const normalizedRichTextDir = normalizePath(richTextDir);
 
 			if (!enable) {
 				return {
@@ -277,10 +301,8 @@ export default class Newledge extends Plugin {
 
 			let fileName = "";
 			if (superType === "SUPER_LINK") {
-				const dir = `${rootDir}/${linkDir}/${normalizedTitle}`;
-				if (!(await adapter.exists(dir))) {
-					await adapter.mkdir(dir);
-				}
+				const dir = `${normalizedRootDir}/${normalizedLinkDir}/${normalizedTitle}`;
+				await this._ensureDir(dir);
 				fileName = await this._getFileName(`${dir}/${normalizedTitle}`);
 			} else if (superType === "SUPER_RICH_TEXT") {
 				if (
@@ -290,17 +312,15 @@ export default class Newledge extends Plugin {
 				) {
 					const normalizedRelatedContentTitle =
 						this._normalizeTitle(relatedContentTitle);
-					const relatedContentDir = `${rootDir}/${linkDir}/${normalizedRelatedContentTitle}`;
-					if (!(await adapter.exists(relatedContentDir))) {
-						await adapter.mkdir(relatedContentDir);
-					}
+					const relatedContentDir = `${normalizedRootDir}/${normalizedLinkDir}/${normalizedRelatedContentTitle}`;
+					await this._ensureDir(relatedContentDir);
 
 					fileName = await this._getFileName(
 						`${relatedContentDir}/${normalizedTitle}`
 					);
 				} else {
 					fileName = await this._getFileName(
-						`${rootDir}/${richTextDir}/${normalizedTitle}`
+						`${normalizedRootDir}/${normalizedRichTextDir}/${normalizedTitle}`
 					);
 				}
 			}
@@ -362,6 +382,41 @@ export default class Newledge extends Plugin {
 		}
 
 		return normalizePath(sanitized);
+	}
+
+	private _normalizeRootDir(rootDir: string) {
+		const safeRootDir = typeof rootDir === "string" ? rootDir : "";
+		const normalized = normalizePath(safeRootDir.trim());
+		if (!normalized || normalized === ".") {
+			return DEFAULT_SETTINGS.rootDir;
+		}
+		// 根目录只允许单段目录名，避免越界或多层路径带来的不确定性
+		if (
+			normalized.includes("..") ||
+			normalized.includes("/") ||
+			normalized.includes("\\")
+		) {
+			return DEFAULT_SETTINGS.rootDir;
+		}
+
+		return normalized;
+	}
+
+	private async _ensureDir(dir: string) {
+		const adapter = this.app.vault.adapter;
+		const normalized = normalizePath(dir);
+		if (!normalized || normalized === ".") {
+			return;
+		}
+
+		const parts = normalized.split("/").filter(Boolean);
+		let current = "";
+		for (const part of parts) {
+			current = current ? `${current}/${part}` : part;
+			if (!(await adapter.exists(current))) {
+				await adapter.mkdir(current);
+			}
+		}
 	}
 
 	private async _getFileName(name: string) {
