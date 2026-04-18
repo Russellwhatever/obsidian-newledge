@@ -390,12 +390,16 @@ export default class Newledge extends Plugin {
 		if (!normalized || normalized === ".") {
 			return DEFAULT_SETTINGS.rootDir;
 		}
-		// 根目录只允许单段目录名，避免越界或多层路径带来的不确定性
-		if (
-			normalized.includes("..") ||
-			normalized.includes("/") ||
-			normalized.includes("\\")
-		) {
+
+		// 仅允许 vault 内相对路径，禁止绝对路径和越界路径
+		const isAbsolutePath =
+			normalized.startsWith("/") || /^[a-zA-Z]:\//.test(normalized);
+		if (isAbsolutePath) {
+			return DEFAULT_SETTINGS.rootDir;
+		}
+
+		const segments = normalized.split("/").filter(Boolean);
+		if (segments.length === 0 || segments.some((segment) => segment === "..")) {
 			return DEFAULT_SETTINGS.rootDir;
 		}
 
