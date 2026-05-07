@@ -1,6 +1,8 @@
 # Obsidian-Newledge
 
-[新枝](https://www.xinzhi.zone) 提供的 Obsidian 插件，支持同步新枝数据到 Obsidian 中。
+本仓库基于[新枝](https://www.xinzhi.zone) 提供的 Obsidian 插件，提供了更新的自定义选项。
+
+受限于本人精力，本仓库于2026-05-07停止更新。
 
 ## 使用
 
